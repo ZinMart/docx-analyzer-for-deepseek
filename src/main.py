@@ -5,10 +5,15 @@
 
 import sys
 import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QPushButton,
                              QVBoxLayout, QWidget, QFileDialog, QLabel,
                              QMessageBox)
 from PyQt5.QtCore import Qt
+from docx_analyzer import DocxAnalyzer
 
 
 class MainWindow(QMainWindow):
@@ -108,14 +113,49 @@ class MainWindow(QMainWindow):
     def analyze_file(self):
         """Обработчик кнопки анализа файла"""
         if self.current_file:
-            QMessageBox.information(
-                self,
-                "Анализ начат",
-                f"Начинаю анализ файла: {os.path.basename(self.current_file)}\n\n"
-                f"Эта функция будет реализована на следующем этапе."
-            )
+            try:
+                # 1. Создаем анализатор
+                analyzer = DocxAnalyzer(self.current_file)
 
+                # 2. Получаем базовую информацию
+                basic_info = analyzer.get_basic_info()
 
+                # 3. Анализируем содержимое
+                stats = analyzer.analyze()
+
+                # 4. Извлекаем текст (первые 500 символов)
+                text_sample = analyzer.extract_text()[:500]
+
+                # 5. Формируем сообщение
+                message = f"📄 Файл: {basic_info['filename']}\n"
+                message += f"👤 Автор: {basic_info['author']}\n"
+                message += f"📅 Создан: {basic_info['created']}\n\n"
+                message += f"📊 СТАТИСТИКА:\n"
+                message += f"• Абзацев: {stats['total_paragraphs']}\n"
+                message += f"• Таблиц: {stats['tables']}\n"
+                message += f"• Изображений: {stats['images']}\n"
+                message += f"• Формул: {stats['formulas']}\n\n"
+                message += f"📝 ТЕКСТ (первые 500 символов):\n"
+                message += f"{text_sample}..."
+
+                # 6. Показываем результаты
+                QMessageBox.information(
+                    self,
+                    "Результаты анализа",
+                    message
+                )
+
+            except Exception as e:
+                # 7. Если ошибка - показываем детали
+                import traceback
+                error_details = traceback.format_exc()
+                print("ОШИБКА АНАЛИЗА:", error_details)
+
+                QMessageBox.critical(
+                    self,
+                    "Ошибка анализа",
+                    f"Файл открыт, но анализ не удался:\n{str(e)}"
+                )
 def main():
     """Точка входа в программу"""
     app = QApplication(sys.argv)
