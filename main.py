@@ -15,7 +15,7 @@ from PyQt5.QtCore import Qt
 
 
 class MainWindow(QMainWindow):
-    """Главное окно программы"""
+    """Главное окно программы - СТАБИЛЬНАЯ ВЕРСИЯ БЕЗ ТЕМ"""
 
     CONFIG_FILE = "app_config.json"
 
@@ -27,6 +27,9 @@ class MainWindow(QMainWindow):
         self.last_file_folder = None
         self.load_config()
 
+        # Применяем базовые стили
+        self.apply_basic_styles()
+
     def load_config(self):
         """Загрузить сохраненные настройки из файла"""
         try:
@@ -35,7 +38,7 @@ class MainWindow(QMainWindow):
                     config = json.load(f)
                     self.last_folder = config.get('last_folder')
                     self.last_file_folder = config.get('last_file_folder')
-                    print(f"✅ Загружены настройки: {config}")
+                    print(f"✅ Загружены настройки")
         except Exception as e:
             print(f"❌ Ошибка загрузки настроек: {e}")
 
@@ -49,30 +52,86 @@ class MainWindow(QMainWindow):
             }
             with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
-            print(f"✅ Настройки сохранены: {config}")
+            print(f"✅ Настройки сохранены")
         except Exception as e:
             print(f"❌ Ошибка сохранения настроек: {e}")
+
+    def apply_basic_styles(self):
+        """Применить базовые стили"""
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #F5F5F5;
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+
+            QLabel {
+                color: #333333;
+                font-size: 14px;
+            }
+
+            QPushButton {
+                background-color: #007ACC;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 18px;
+                font-size: 14px;
+                font-weight: 500;
+                min-height: 40px;
+            }
+
+            QPushButton:hover {
+                background-color: #005FA3;
+            }
+
+            QPushButton:disabled {
+                background-color: #CCCCCC;
+                color: #666666;
+            }
+
+            QPushButton#title_button {
+                background-color: #2DA44E;
+                font-weight: bold;
+            }
+
+            QPushButton#title_button:hover {
+                background-color: #2C974B;
+            }
+        """)
 
     def setup_ui(self):
         """Настройка графического интерфейса"""
         # Настройки окна
-        self.setWindowTitle("DOCX/PDF Analyzer for DeepSeek")
+        self.setWindowTitle("DOCX/PDF Analyzer")
         self.setGeometry(100, 100, 600, 400)
 
         # Создаем виджеты
         self.title_label = QLabel("DOCX/PDF Анализатор")
-        self.title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        self.title_label.setStyleSheet("""
+            font-size: 20px; 
+            font-weight: bold; 
+            color: #007ACC;
+            margin-bottom: 10px;
+        """)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.info_label = QLabel("Выберите DOCX или PDF файлы для анализа")
         self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.file_label = QLabel("Файлы не выбраны")
-        self.file_label.setStyleSheet("color: gray;")
+        self.file_label.setStyleSheet("""
+            color: #666666;
+            background-color: white;
+            border: 2px dashed #007ACC;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 5px;
+        """)
         self.file_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Кнопки
         self.btn_select_file = QPushButton("📁 Выбрать файлы (DOCX/PDF)")
+        self.btn_select_file.setObjectName("title_button")
         self.btn_select_file.clicked.connect(self.select_file)
 
         self.btn_select_folder = QPushButton("📂 Выбрать папку для сохранения")
@@ -80,6 +139,7 @@ class MainWindow(QMainWindow):
         self.btn_select_folder.setEnabled(False)
 
         self.btn_analyze = QPushButton("🔍 Анализировать файл(ы)")
+        self.btn_analyze.setObjectName("title_button")
         self.btn_analyze.clicked.connect(self.analyze_file)
         self.btn_analyze.setEnabled(False)
 
@@ -88,14 +148,20 @@ class MainWindow(QMainWindow):
 
         # Размещение
         layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
         layout.addWidget(self.title_label)
         layout.addWidget(self.info_label)
-        layout.addSpacing(20)
+        layout.addSpacing(10)
         layout.addWidget(self.file_label)
         layout.addSpacing(20)
+
         layout.addWidget(self.btn_select_file)
         layout.addWidget(self.btn_select_folder)
         layout.addWidget(self.btn_analyze)
+        layout.addSpacing(15)
+
         layout.addWidget(self.btn_check_updates)
         layout.addStretch()
 
@@ -111,7 +177,7 @@ class MainWindow(QMainWindow):
             self,
             "Выберите файлы (можно несколько)",
             initial_dir,
-            "Документы (*.docx *.doc *.pdf);;All Files (*.*)"
+            "Документы (*.docx *.doc *.pdf);;Все файлы (*.*)"
         )
 
         if files:
@@ -126,7 +192,15 @@ class MainWindow(QMainWindow):
             else:
                 self.file_label.setText(f"✅ Выбрано {len(files)} файлов")
 
-            self.file_label.setStyleSheet("color: green;")
+            self.file_label.setStyleSheet("""
+                color: #2DA44E;
+                background-color: #F0FFF4;
+                border: 2px solid #2DA44E;
+                border-radius: 8px;
+                padding: 12px;
+                margin: 5px;
+                font-weight: bold;
+            """)
             self.btn_select_folder.setEnabled(True)
             self.btn_analyze.setEnabled(True)
 
@@ -193,129 +267,44 @@ class MainWindow(QMainWindow):
 
                 if result["status"] == "success":
                     stats = result["stats"]
+                    text = result.get("text_sample", "")
 
-                    message = f"📄 Файл: {stats['file_name']}\n"
-                    message += f"🔧 Плагин: {suitable_plugin.name}\n\n"
+                    # Форматируем красивое сообщение
+                    message = f"<h3>📄 Результаты анализа</h3>"
+                    message += f"<p><b>Файл:</b> {stats['file_name']}</p>"
+                    message += f"<p><b>Плагин:</b> {suitable_plugin.name}</p>"
+                    message += "<hr>"
+                    message += "<h4>📊 Статистика:</h4>"
 
                     for key, value in stats.items():
                         if key != 'file_name':
-                            message += f"• {key}: {value}\n"
+                            message += f"<p>• <b>{key}:</b> {value}</p>"
 
-                    if 'text_sample' in result and result['text_sample']:
-                        message += f"\n📝 ТЕКСТ (первые 500 символов):\n"
-                        message += f"{result['text_sample'][:500]}..."
+                    if text:
+                        message += "<hr>"
+                        message += "<h4>📝 Текст (первые 500 символов):</h4>"
+                        message += f"<pre>{text[:500]}...</pre>"
 
-                    QMessageBox.information(self, "Результаты анализа", message)
+                    # Создаем красивое сообщение
+                    msg_box = QMessageBox(self)
+                    msg_box.setWindowTitle("Результаты анализа")
+                    msg_box.setTextFormat(Qt.TextFormat.RichText)
+                    msg_box.setText(message)
+                    msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+                    msg_box.exec()
+
                 else:
                     QMessageBox.critical(self, "Ошибка", result["message"])
             else:
-                # Резервный вариант - прямое определение
-                if file_to_analyze.lower().endswith(('.docx', '.doc')):
-                    result = self.analyze_docx_direct(file_to_analyze)
-                elif file_to_analyze.lower().endswith('.pdf'):
-                    result = self.analyze_pdf_direct(file_to_analyze)
-                else:
-                    QMessageBox.warning(self, "Не поддерживается",
-                                        f"Формат файла не поддерживается")
-                    return
-
-                if result["status"] == "success":
-                    stats = result["stats"]
-
-                    message = f"📄 Файл: {stats['file_name']}\n"
-                    message += f"🔧 Метод: прямое чтение\n\n"
-
-                    for key, value in stats.items():
-                        if key != 'file_name':
-                            message += f"• {key}: {value}\n"
-
-                    if 'text_sample' in result and result['text_sample']:
-                        message += f"\n📝 ТЕКСТ (первые 500 символов):\n"
-                        message += f"{result['text_sample'][:500]}..."
-
-                    QMessageBox.information(self, "Результаты анализа", message)
-                else:
-                    QMessageBox.critical(self, "Ошибка", result["message"])
+                QMessageBox.warning(self, "Не поддерживается",
+                                    "Формат файла не поддерживается\n\n"
+                                    "Поддерживаемые форматы:\n"
+                                    "• DOCX/DOC\n"
+                                    "• PDF")
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка",
                                  f"Не удалось прочитать файл:\n{str(e)}")
-
-    def analyze_docx_direct(self, file_path):
-        """Прямой анализ DOCX (резервный метод)"""
-        try:
-            from docx import Document
-            import os
-
-            doc = Document(file_path)
-
-            text_parts = []
-            for para in doc.paragraphs[:20]:
-                if para.text.strip():
-                    text_parts.append(para.text)
-
-            text_sample = "\n".join(text_parts)
-
-            stats = {
-                'file_name': os.path.basename(file_path),
-                'paragraphs': len(doc.paragraphs),
-                'tables': len(doc.tables),
-                'author': doc.core_properties.author or "Не указан",
-                'created': str(doc.core_properties.created)[:19] if doc.core_properties.created else "Неизвестно"
-            }
-
-            return {
-                "status": "success",
-                "stats": stats,
-                "text_sample": text_sample
-            }
-
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Ошибка DOCX: {str(e)}"
-            }
-
-    def analyze_pdf_direct(self, file_path):
-        """Прямой анализ PDF (резервный метод)"""
-        try:
-            import PyPDF2
-            import os
-
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-
-                text_parts = []
-                for i, page in enumerate(pdf_reader.pages[:3]):
-                    text = page.extract_text()
-                    if text.strip():
-                        text_parts.append(f"--- Страница {i + 1} ---\n{text}")
-
-                text_sample = "\n\n".join(text_parts)
-
-                stats = {
-                    'file_name': os.path.basename(file_path),
-                    'pages': len(pdf_reader.pages),
-                    'encrypted': pdf_reader.is_encrypted
-                }
-
-                if pdf_reader.metadata:
-                    if pdf_reader.metadata.get('/Author'):
-                        stats['author'] = pdf_reader.metadata['/Author']
-                    if pdf_reader.metadata.get('/Title'):
-                        stats['title'] = pdf_reader.metadata['/Title']
-
-                return {
-                    "status": "success",
-                    "stats": stats,
-                    "text_sample": text_sample
-                }
-
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Ошибка PDF: {str(e)}"
-            }
 
     def check_updates(self):
         """Проверить обновления"""
@@ -323,6 +312,9 @@ class MainWindow(QMainWindow):
             self,
             "Обновления",
             "✅ Ваша программа актуальна!\n\n"
+            "• Версия: 2.0 (стабильная)\n"
+            "• Поддержка: DOCX, PDF\n"
+            "• Система тем: отключена\n\n"
             "Все функции работают корректно."
         )
 
@@ -330,14 +322,17 @@ class MainWindow(QMainWindow):
 def main():
     """Точка входа в программу"""
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    app.setStyle('Fusion')  # Современный стиль Qt
 
     window = MainWindow()
     window.show()
 
-    print("✅ Программа запущена успешно!")
-    print("✅ Плагины загружаются автоматически")
-    print("✅ Резервные методы на случай ошибок")
+    print("=" * 50)
+    print("✅ DOCX/PDF Analyzer for DeepSeek")
+    print("✅ Версия: 2.0 (стабильная)")
+    print("✅ Поддержка: DOCX, PDF файлы")
+    print("✅ Сохранение настроек")
+    print("=" * 50)
 
     sys.exit(app.exec())
 
