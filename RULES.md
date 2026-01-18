@@ -1,0 +1,1 @@
+Все файлы создавать через encoding_manager_fixed.py

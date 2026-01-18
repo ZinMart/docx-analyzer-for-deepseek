@@ -1,0 +1,1 @@
+Используйте: python encoding_manager_fixed.py create имя 'текст'
