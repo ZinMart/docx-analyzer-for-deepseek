@@ -5,10 +5,10 @@
 
 import sys
 import os
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton,
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QPushButton,
                              QVBoxLayout, QWidget, QFileDialog, QLabel,
                              QMessageBox)
-from PyQt6.QtCore import Qt
+from PyQt5.QtCore import Qt
 
 
 class MainWindow(QMainWindow):
