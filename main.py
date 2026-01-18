@@ -111,51 +111,68 @@ class MainWindow(QMainWindow):
             )
 
     def analyze_file(self):
-        """Обработчик кнопки анализа файла"""
+        """Обработчик кнопки анализа файла - с выбором плагина"""
         if self.current_file:
             try:
-                # 1. Создаем анализатор
-                analyzer = DocxAnalyzer(self.current_file)
+                # Пробуем разные плагины по очереди
+                plugins_to_try = []
 
-                # 2. Получаем базовую информацию
-                basic_info = analyzer.get_basic_info()
+                # 1. Пробуем DOCX плагин
+                try:
+                    from plugins.docx_plugin import DocxPlugin
+                    plugins_to_try.append(DocxPlugin())
+                except ImportError:
+                    pass
 
-                # 3. Анализируем содержимое
-                stats = analyzer.analyze()
+                # 2. Пробуем PDF плагин
+                try:
+                    from plugins.pdf_plugin import PDFPlugin
+                    plugins_to_try.append(PDFPlugin())
+                except ImportError:
+                    pass
 
-                # 4. Извлекаем текст (первые 500 символов)
-                text_sample = analyzer.extract_text()[:500]
+                # 3. Ищем подходящий плагин
+                suitable_plugin = None
+                for plugin in plugins_to_try:
+                    if plugin.can_handle(self.current_file):
+                        suitable_plugin = plugin
+                        break
 
-                # 5. Формируем сообщение
-                message = f"📄 Файл: {basic_info['filename']}\n"
-                message += f"👤 Автор: {basic_info['author']}\n"
-                message += f"📅 Создан: {basic_info['created']}\n\n"
-                message += f"📊 СТАТИСТИКА:\n"
-                message += f"• Абзацев: {stats['total_paragraphs']}\n"
-                message += f"• Таблиц: {stats['tables']}\n"
-                message += f"• Изображений: {stats['images']}\n"
-                message += f"• Формул: {stats['formulas']}\n\n"
-                message += f"📝 ТЕКСТ (первые 500 символов):\n"
-                message += f"{text_sample}..."
+                if suitable_plugin:
+                    result = suitable_plugin.analyze(self.current_file)
 
-                # 6. Показываем результаты
-                QMessageBox.information(
-                    self,
-                    "Результаты анализа",
-                    message
-                )
+                    if result["status"] == "success":
+                        stats = result["stats"]
+                        text = result["text_sample"]
+
+                        message = f"📄 Файл: {stats['file_name']}\n"
+
+                        if 'author' in stats:
+                            message += f"👤 Автор: {stats['author']}\n"
+                        if 'pages' in stats:
+                            message += f"📄 Страниц: {stats['pages']}\n"
+                        elif 'paragraphs' in stats:
+                            message += f"📝 Абзацев: {stats['paragraphs']}\n"
+
+                        message += f"\n📊 СТАТИСТИКА:\n"
+                        for key, value in stats.items():
+                            if key not in ['file_name', 'text_sample']:
+                                message += f"• {key}: {value}\n"
+
+                        message += f"\n📝 ТЕКСТ (первые 1000 символов):\n"
+                        message += f"{text}..."
+
+                        QMessageBox.information(self, "Результаты анализа", message)
+                    else:
+                        QMessageBox.critical(self, "Ошибка", result["message"])
+                else:
+                    QMessageBox.warning(self, "Не поддерживается",
+                                        f"Формат файла не поддерживается\n\nПоддерживаемые форматы:\n• DOCX/DOC\n• PDF")
 
             except Exception as e:
-                # 7. Если ошибка - показываем детали
-                import traceback
-                error_details = traceback.format_exc()
-                print("ОШИБКА АНАЛИЗА:", error_details)
+                QMessageBox.critical(self, "Ошибка",
+                                     f"Не удалось прочитать файл:\n{str(e)}")
 
-                QMessageBox.critical(
-                    self,
-                    "Ошибка анализа",
-                    f"Файл открыт, но анализ не удался:\n{str(e)}"
-                )
 def main():
     """Точка входа в программу"""
     app = QApplication(sys.argv)
