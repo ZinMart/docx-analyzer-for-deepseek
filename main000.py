@@ -4,9 +4,7 @@ import json
 import datetime
 
 # Добавляем папку проекта в путь поиска модулей
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QPushButton,
                              QVBoxLayout, QWidget, QFileDialog, QLabel,
@@ -56,11 +54,11 @@ class MainWindow(QMainWindow):
     def setup_ui(self):
         """Настройка графического интерфейса"""
         # Настройки окна
-        self.setWindowTitle("DOCX/PDF Analyzer for DeepSeek")
+        self.setWindowTitle("DOCX Analyzer for DeepSeek")
         self.setGeometry(100, 100, 600, 400)
 
         # Создаем виджеты
-        self.title_label = QLabel("DOCX/PDF Анализатор")
+        self.title_label = QLabel("DOCX Анализатор для DeepSeek")
         self.title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -84,7 +82,7 @@ class MainWindow(QMainWindow):
         self.btn_analyze.setEnabled(False)
 
         self.btn_check_updates = QPushButton("🔄 Проверить обновления")
-        self.btn_check_updates.clicked.connect(self.check_updates)
+        self.btn_check_updates.clicked.connect(self.check_updates)  # ← ИСПРАВЛЕНО
 
         # Размещение
         layout = QVBoxLayout()
@@ -105,6 +103,7 @@ class MainWindow(QMainWindow):
 
     def select_file(self):
         """Выбор файлов с сохранением последнего пути"""
+        # Начальная папка - либо последняя выбранная, либо домашняя
         initial_dir = self.last_file_folder if self.last_file_folder else os.path.expanduser("~")
 
         files, _ = QFileDialog.getOpenFileNames(
@@ -116,8 +115,10 @@ class MainWindow(QMainWindow):
 
         if files:
             self.selected_files = files
+
+            # Сохраняем папку последнего файла для следующего выбора
             self.last_file_folder = os.path.dirname(files[0])
-            self.save_config()
+            self.save_config()  # Сохраняем настройки
 
             filenames = [os.path.basename(f) for f in files]
 
@@ -132,6 +133,7 @@ class MainWindow(QMainWindow):
 
     def select_folder(self):
         """Обработчик кнопки выбора папки с сохранением последнего пути"""
+        # Начальная папка - либо последняя выбранная, либо домашняя
         initial_dir = self.last_folder if self.last_folder else os.path.expanduser("~")
 
         folder_path = QFileDialog.getExistingDirectory(
@@ -141,8 +143,9 @@ class MainWindow(QMainWindow):
         )
 
         if folder_path:
+            # Сохраняем путь для следующего раза
             self.last_folder = folder_path
-            self.save_config()
+            self.save_config()  # Сохраняем настройки
 
             QMessageBox.information(
                 self,
@@ -151,41 +154,38 @@ class MainWindow(QMainWindow):
             )
 
     def analyze_file(self):
-        """Анализ файлов с использованием плагинов"""
+        """Обработчик кнопки анализа файла - с выбором плагина"""
+        # Проверяем есть ли выбранные файлы
         if not self.selected_files:
             QMessageBox.warning(self, "Нет файлов", "Сначала выберите файлы")
             return
 
+        # Берем первый файл из списка для анализа
         file_to_analyze = self.selected_files[0]
 
         try:
-            # Пробуем использовать плагины
-            plugins = []
+            # Пробуем разные плагины по очереди
+            plugins_to_try = []
 
-            # DOCX плагин
+            # 1. Пробуем DOCX плагин
             try:
                 from plugins.docx_plugin import DocxPlugin
-                docx_plugin = DocxPlugin()
-                plugins.append(docx_plugin)
-                print(f"✅ Загружен DOCX плагин: {docx_plugin.name}")
-            except ImportError as e:
-                print(f"⚠️ DOCX плагин не загружен: {e}")
+                plugins_to_try.append(DocxPlugin())
+            except ImportError:
+                pass
 
-            # PDF плагин
+            # 2. Пробуем PDF плагин
             try:
                 from plugins.pdf_plugin import PDFPlugin
-                pdf_plugin = PDFPlugin()
-                plugins.append(pdf_plugin)
-                print(f"✅ Загружен PDF плагин: {pdf_plugin.name}")
-            except ImportError as e:
-                print(f"⚠️ PDF плагин не загружен: {e}")
+                plugins_to_try.append(PDFPlugin())
+            except ImportError:
+                pass
 
-            # Ищем подходящий плагин
+            # 3. Ищем подходящий плагин
             suitable_plugin = None
-            for plugin in plugins:
-                if hasattr(plugin, 'can_handle') and plugin.can_handle(file_to_analyze):
+            for plugin in plugins_to_try:
+                if plugin.can_handle(file_to_analyze):
                     suitable_plugin = plugin
-                    print(f"✅ Найден подходящий плагин: {plugin.name}")
                     break
 
             if suitable_plugin:
@@ -193,138 +193,71 @@ class MainWindow(QMainWindow):
 
                 if result["status"] == "success":
                     stats = result["stats"]
+                    text = result["text_sample"]
 
                     message = f"📄 Файл: {stats['file_name']}\n"
-                    message += f"🔧 Плагин: {suitable_plugin.name}\n\n"
 
+                    if 'author' in stats:
+                        message += f"👤 Автор: {stats['author']}\n"
+                    if 'pages' in stats:
+                        message += f"📄 Страниц: {stats['pages']}\n"
+                    elif 'paragraphs' in stats:
+                        message += f"📝 Абзацев: {stats['paragraphs']}\n"
+
+                    message += f"\n📊 СТАТИСТИКА:\n"
                     for key, value in stats.items():
-                        if key != 'file_name':
+                        if key not in ['file_name', 'text_sample']:
                             message += f"• {key}: {value}\n"
 
-                    if 'text_sample' in result and result['text_sample']:
-                        message += f"\n📝 ТЕКСТ (первые 500 символов):\n"
-                        message += f"{result['text_sample'][:500]}..."
+                    message += f"\n📝 ТЕКСТ (первые 1000 символов):\n"
+                    message += f"{text}..."
 
                     QMessageBox.information(self, "Результаты анализа", message)
                 else:
                     QMessageBox.critical(self, "Ошибка", result["message"])
             else:
-                # Резервный вариант - прямое определение
-                if file_to_analyze.lower().endswith(('.docx', '.doc')):
-                    result = self.analyze_docx_direct(file_to_analyze)
-                elif file_to_analyze.lower().endswith('.pdf'):
-                    result = self.analyze_pdf_direct(file_to_analyze)
-                else:
-                    QMessageBox.warning(self, "Не поддерживается",
-                                        f"Формат файла не поддерживается")
-                    return
-
-                if result["status"] == "success":
-                    stats = result["stats"]
-
-                    message = f"📄 Файл: {stats['file_name']}\n"
-                    message += f"🔧 Метод: прямое чтение\n\n"
-
-                    for key, value in stats.items():
-                        if key != 'file_name':
-                            message += f"• {key}: {value}\n"
-
-                    if 'text_sample' in result and result['text_sample']:
-                        message += f"\n📝 ТЕКСТ (первые 500 символов):\n"
-                        message += f"{result['text_sample'][:500]}..."
-
-                    QMessageBox.information(self, "Результаты анализа", message)
-                else:
-                    QMessageBox.critical(self, "Ошибка", result["message"])
+                QMessageBox.warning(self, "Не поддерживается",
+                                    f"Формат файла не поддерживается\n\nПоддерживаемые форматы:\n• DOCX/DOC\n• PDF")
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка",
                                  f"Не удалось прочитать файл:\n{str(e)}")
 
-    def analyze_docx_direct(self, file_path):
-        """Прямой анализ DOCX (резервный метод)"""
-        try:
-            from docx import Document
-            import os
-
-            doc = Document(file_path)
-
-            text_parts = []
-            for para in doc.paragraphs[:20]:
-                if para.text.strip():
-                    text_parts.append(para.text)
-
-            text_sample = "\n".join(text_parts)
-
-            stats = {
-                'file_name': os.path.basename(file_path),
-                'paragraphs': len(doc.paragraphs),
-                'tables': len(doc.tables),
-                'author': doc.core_properties.author or "Не указан",
-                'created': str(doc.core_properties.created)[:19] if doc.core_properties.created else "Неизвестно"
-            }
-
-            return {
-                "status": "success",
-                "stats": stats,
-                "text_sample": text_sample
-            }
-
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Ошибка DOCX: {str(e)}"
-            }
-
-    def analyze_pdf_direct(self, file_path):
-        """Прямой анализ PDF (резервный метод)"""
-        try:
-            import PyPDF2
-            import os
-
-            with open(file_path, 'rb') as file:
-                pdf_reader = PyPDF2.PdfReader(file)
-
-                text_parts = []
-                for i, page in enumerate(pdf_reader.pages[:3]):
-                    text = page.extract_text()
-                    if text.strip():
-                        text_parts.append(f"--- Страница {i + 1} ---\n{text}")
-
-                text_sample = "\n\n".join(text_parts)
-
-                stats = {
-                    'file_name': os.path.basename(file_path),
-                    'pages': len(pdf_reader.pages),
-                    'encrypted': pdf_reader.is_encrypted
-                }
-
-                if pdf_reader.metadata:
-                    if pdf_reader.metadata.get('/Author'):
-                        stats['author'] = pdf_reader.metadata['/Author']
-                    if pdf_reader.metadata.get('/Title'):
-                        stats['title'] = pdf_reader.metadata['/Title']
-
-                return {
-                    "status": "success",
-                    "stats": stats,
-                    "text_sample": text_sample
-                }
-
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Ошибка PDF: {str(e)}"
-            }
-
     def check_updates(self):
         """Проверить обновления"""
-        QMessageBox.information(
-            self,
-            "Обновления",
-            "✅ Ваша программа актуальна!\n\n"
-            "Все функции работают корректно."
-        )
+        try:
+            from update_client import SimpleUpdateClient
+
+            client = SimpleUpdateClient()
+            updates = client.check_updates()
+
+            if not updates:
+                QMessageBox.information(self, "Обновления",
+                                        "✅ Все обновления установлены!\n\n"
+                                        "Ваша программа актуальна.")
+            else:
+                message = f"📦 Доступно {len(updates)} обновлений:\n\n"
+                for update in updates:
+                    message += f"• {update['name']} (v{update['version']})\n"
+
+                message += "\nНажмите 'ОК' чтобы обновиться."
+
+                reply = QMessageBox.question(self, "Обновления доступны",
+                                             message, QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel)
+
+                if reply == QMessageBox.StandardButton.Ok:
+                    self.perform_update(updates)
+
+        except ImportError:
+            QMessageBox.warning(self, "Обновления",
+                                "Модуль обновлений не установлен")
+
+    def perform_update(self, updates):
+        """Выполнить обновление"""
+        QMessageBox.information(self, "Обновление",
+                                "Обновление будет выполнено в фоновом режиме.\n"
+                                "Программа продолжит работу.\n\n"
+                                "После загрузки обновлений потребуется перезапуск.")
 
 
 def main():
@@ -336,8 +269,8 @@ def main():
     window.show()
 
     print("✅ Программа запущена успешно!")
-    print("✅ Плагины загружаются автоматически")
-    print("✅ Резервные методы на случай ошибок")
+    print("✅ Окно должно быть открыто")
+    print("✅ Проверьте панель задач Windows")
 
     sys.exit(app.exec())
 

@@ -1,0 +1,41 @@
+{
+  "last_updated": "2026-01-18T12:00:00",
+
+  "core_updates": [
+    {
+      "version": "1.0.0",
+      "description": "Первая версия программы",
+      "files": ["main.py", "core/"],
+      "size_kb": 150,
+      "critical": false
+    }
+  ],
+
+  "plugin_updates": [
+    {
+      "name": "docx_plugin",
+      "version": "1.0.0",
+      "description": "Анализ DOCX файлов",
+      "file": "plugins/docx_plugin.py",
+      "size_kb": 5,
+      "requires_core": "1.0.0"
+    },
+    {
+      "name": "pdf_plugin",
+      "version": "1.0.0",
+      "description": "Анализ PDF файлов",
+      "file": "plugins/pdf_plugin.py",
+      "size_kb": 6,
+      "requires_core": "1.0.0"
+    }
+  ],
+
+  "config_updates": [
+    {
+      "name": "default_config",
+      "description": "Настройки по умолчанию",
+      "file": "app_config.json",
+      "size_kb": 1
+    }
+  ]
+}
